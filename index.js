@@ -120,6 +120,7 @@ Card.prototype = {
                 div.setAttribute('num', this._num[j]);
                 div.setAttribute('status', 'back');
                 div.setAttribute('type', this._type[i]);
+                div.setAttribute('colorType', ((i % 2) ? 'red' : 'black'));
                 div.innerHTML = this._svgBackground;
 //                    this.turnFront(div)
                 div.setAttribute('random', parseInt(Math.random() * 2000).toString());
@@ -170,6 +171,8 @@ Card.prototype = {
     //  绑定事件
     bindEvent: function () {
         var _this = this;
+        //  重置拖动所需位置
+        _this.revert();
         //  主牌堆
         this.countContent.onclick = function (e) {
             var target = getCardDiv(e);
@@ -245,13 +248,69 @@ Card.prototype = {
                 target.classList.remove('outline');
             }
         };
-
+        //  拖动
+        document.onmousedown = function (ed) {
+            ed.preventDefault();
+            _this.target = getCardDiv(ed);
+            if (_this.target && _this.target.getAttribute('status') === 'font') {
+                _this.psx = ed.pageX;
+                _this.psy = ed.pageY;
+                _this.targetOriginTop = parseInt(getComputedStyle(_this.target).top);
+                _this.targetOriginLeft = parseInt(getComputedStyle(_this.target).left);
+                _this.target.style.zIndex = '+10000';
+                document.onmousemove = function (em) {
+                    _this.target.style.top = _this.targetOriginTop + em.pageY - _this.psy + 'px';
+                    _this.target.style.left = _this.targetOriginLeft + em.pageX - _this.psx + 'px';
+                }
+            } else {
+                _this.target = null;
+            }
+        };
+        document.onmouseup = function (e) {
+            document.onmousemove = null;
+            if (_this.target) {
+                var _left = parseInt(getComputedStyle(_this.target).left);
+                var _positiveLeft = _this.isPositive(_left);
+                var _digitLeft = _this.digit(_left, _positiveLeft);
+                var _style = _this.target.style;
+                var _parentNode = _this.target.parentNode.parentNode;
+                var _sibling = 'previousElementSibling';
+                if (_digitLeft > 0) {
+                    _sibling = 'nextElementSibling';
+                }
+                _digitLeft = Math.abs(_digitLeft);
+                while (_digitLeft > 0) {
+                    _parentNode = _parentNode[_sibling] ? _parentNode[_sibling] : _parentNode;
+                    _digitLeft--;
+                }
+                var _rightContentList = _parentNode.getElementsByClassName('rightContentList')[0];
+                var _lastChild = _rightContentList.children[_rightContentList.children.length - 1];
+                _style.left = 0;
+                _style.zIndex = 0;
+                _style.top = _this.targetOriginTop + 'px';
+                if (_lastChild !== _this.target) {
+                    if (_lastChild.getAttribute('status') === 'font') {
+                        var _boolean = _lastChild.getAttribute('colortype') === _this.target.getAttribute('colortype');
+                        if (_boolean || (!_boolean && (_lastChild.getAttribute('num') - 1 !== Number(_this.target.getAttribute('num'))))) {
+                            _this.revert();
+                            return;
+                        }
+                    }
+                    _style.top = parseInt(getComputedStyle(_lastChild).top) + 20 + 'px';
+                    _rightContentList.appendChild(_this.target);
+                }
+                _this.revert();
+            }
+        };
         //  找到卡牌
         function getCardDiv(e) {
             var target = e.target;
-            while (target.tagName.toLowerCase() !== 'div' || (Array.prototype.indexOf.call(target.classList, 'card') === -1)) {
+            while (target && target.tagName && target.tagName.toLowerCase() !== 'div' || (Array.prototype.indexOf.call(target.classList, 'card') === -1)) {
                 if (target === _this.el) {
                     break
+                }
+                if (target.tagName.toLowerCase() === 'body') {
+                    return;
                 }
                 target = target.parentNode;
             }
@@ -261,6 +320,7 @@ Card.prototype = {
                 return target;
             }
         }
+
         //  重置位置
         function cardResetPosition(t) {
             var prev = t.previousSibling;
@@ -275,16 +335,50 @@ Card.prototype = {
             }
             t.classList.remove('outline');
         }
+    },
+    //  方向,向左为负值
+    isPositive: function (num) {
+        if (num > 0) {
+            return +1;
+        } else if (num < 0) {
+            return -1;
+        } else {
+            return 0
+        }
+    },
+    //  是否移动到了一个位置(半个位置可以触发)
+    digit: function (num, _positiveLeft) {
+        return parseInt((num + _positiveLeft * (107 / 2)) / 107);
+    },
+    //  revert
+    revert: function () {
+        this.psx = 0;
+        this.psy = 0;
+        this.target = null;
+        this.targetOriginTop = 0;
+        this.targetOriginLeft = 0;
     }
 };
 (function (w, u) {
     var unit = {};
+    document.onmousedown = function (e) {
+        //e.preventDefault();
+    };
     unit.init = function () {
         w.a = new Card(wrapper);
     };
+    unit.isPositive = function (num) {
+        if (num > 0) {
+            return +1;
+        } else if (num < 0) {
+            return -1;
+        } else {
+            return 0
+        }
+    };
+    unit.isNegative = function () {
+    };
     w.unit = unit;
-    document.onmousedown = function (e) {
-        e.preventDefault();
-    }
+
 }(window, undefined));
 unit.init();
