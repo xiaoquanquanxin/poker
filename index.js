@@ -191,15 +191,32 @@ Card.prototype = {
             if (target && target.getAttribute('dbl')) {
                 var type = target.getAttribute('type');
                 var li = _this.rightContent.getElementsByTagName('li');
-                forEach.call(li, function (t, i) {
-                    if (t.getAttribute('_type') === type) {
-                        t.appendChild(target);
-                        cardResetPosition(target);
-                        return false;
-                    }
-                })
+                forEach.call(li, finalFruit(target,type));
             }
         };
+        function finalFruit(target,type) {
+            return function (t, i) {
+                if (t.getAttribute('_type') === type) {
+                    var div = t.children[t.children.length - 1];
+                    //  如果有已经放置的牌了
+                    if (div.getAttribute('status')) {
+                        if (Number(div.getAttribute('num')) === target.getAttribute('num') - 1) {
+                            t.appendChild(target);
+                            target.setAttribute('frozen', true);
+                            cardResetPosition(target);
+                        }
+                    } else {
+                        if (Number(target.getAttribute('num')) === 1) {
+                            t.appendChild(target);
+                            target.setAttribute('frozen', true);
+                            cardResetPosition(target);
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+
         //  左侧牌堆
         this.stack.onclick = function (e) {
             var target = getCardDiv(e);
@@ -219,20 +236,15 @@ Card.prototype = {
         };
         //  左侧可选
         this.show.onclick = function (e) {
-            // console.log(1);
+
         };
+        //  左侧双击
         this.show.ondblclick = function (e) {
             var target = getCardDiv(e);
             if (target && target.getAttribute('dbl')) {
                 var type = target.getAttribute('type');
                 var li = _this.rightContent.getElementsByTagName('li');
-                forEach.call(li, function (t, i) {
-                    if (t.getAttribute('_type') === type) {
-                        t.appendChild(target);
-                        cardResetPosition(target);
-                        return false;
-                    }
-                })
+                forEach.call(li, finalFruit(target,type));
             }
 
         };
@@ -263,7 +275,7 @@ Card.prototype = {
                     _this.target.style.left = _this.targetOriginLeft + em.pageX - _this.psx + 'px';
                 }
             } else {
-                _this.target = null;
+                _this.revert();
             }
         };
         document.onmouseup = function (e) {
@@ -317,6 +329,9 @@ Card.prototype = {
             //  target是div
             var siblings = target.parentNode.children;
             if (target === siblings[siblings.length - 1]) {
+                if (target.getAttribute('frozen')) {
+                    return;
+                }
                 return target;
             }
         }
